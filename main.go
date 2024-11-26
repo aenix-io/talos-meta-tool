@@ -11,6 +11,8 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -152,7 +154,7 @@ func (a *ADV) WriteToDisk(devicePath string) error {
 }
 
 func main() {
-	// Command line parameters
+	// Command-line arguments
 	devicePath := flag.String("device", "", "Path to the META device (e.g., /dev/sda4)")
 	configPath := flag.String("config", "", "Path to the configuration file (e.g., config.yaml)")
 	flag.Parse()
@@ -166,6 +168,18 @@ func main() {
 	configData, err := ioutil.ReadFile(*configPath)
 	if err != nil {
 		log.Fatalf("Error reading configuration file: %v", err)
+	}
+
+	// YAML validation
+	var config interface{}
+	if err := yaml.Unmarshal(configData, &config); err != nil {
+		log.Fatalf("Invalid YAML configuration: %v", err)
+	}
+
+	// Marshaling back to ensure correct format
+	validatedConfigData, err := yaml.Marshal(config)
+	if err != nil {
+		log.Fatalf("Error marshaling YAML configuration: %v", err)
 	}
 
 	// Creating or loading an existing ADV
@@ -183,8 +197,8 @@ func main() {
 		}
 	}
 
-	// Writing configuration to ADV
-	if !adv.SetTagBytes(FixedTag, configData) {
+	// Writing validated configuration into ADV
+	if !adv.SetTagBytes(FixedTag, validatedConfigData) {
 		log.Fatalf("Error: not enough space to write configuration")
 	}
 
@@ -193,5 +207,5 @@ func main() {
 		log.Fatalf("Error writing data to disk: %v", err)
 	}
 
-	fmt.Println("Configuration successfully written to META partition.")
+	fmt.Println("Configuration successfully validated and written to META partition.")
 }
